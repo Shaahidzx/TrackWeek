@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en"> 
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrackWeek Planner</title>
+    <!-- Load Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            /* YouTube Dark Mode Palette */
+            --accent-color: #FF4747; /* Bright Red */
+            --accent-light: #520000; /* Darker red for subtle hover */
+            --primary-text: #FFFFFF; /* White */
+            --secondary-text: #AAAAAA; /* Light gray for subtext */
+            --bg-color: #0F0F0F; /* True dark background */
+            --card-bg: #212121; /* Dark surface color */
+            --shadow-color: rgba(0, 0, 0, 0.4); 
+            --border-color: #333333; /* Dark border color for definition */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            min-height: 100vh;
+            width: 100vw;
+            overflow-x: hidden;
+            padding: 0;
+            color: var(--primary-text);
+            background-color: var(--bg-color);
+            letter-spacing: 0.01em; 
+        }
+
+        /* --- STYLING ELEMENTS FOR YOUTUBE DARK MODE --- */
+        
+        .day-column, .someday-list, .someday-sidebar {
+            background-color: var(--card-bg);
+            /* Minimalist rounded corners */
+            border-radius: 0.5rem; 
+            box-shadow: 0 2px 4px var(--shadow-color); 
+            border: 1px solid var(--border-color); /* Slight border for definition */
+        }
+        .someday-sidebar {
+             background-color: #0F0F0F;
+             border: none;
+        }
+        .add-task-input { 
+            background-color: var(--border-color); /* Darker input field */
+            color: var(--primary-text); 
+            border-radius: 0.5rem;
+            font-weight: 400;
+        }
+
+        /* FIX: Ensure Someday title input has dark background */
+        .someday-title {
+            background-color: var(--card-bg) !important; 
+            color: var(--primary-text) !important;
+            border-bottom-color: var(--border-color) !important; /* Ensure line is dark */
+        }
+        
+        /* Fix placeholder text color for visibility in dark mode */
+        .add-task-input::placeholder,
+        .someday-title::placeholder {
+            color: var(--secondary-text); /* Ensure light gray for visibility */
+            opacity: 1; /* Override default opacity if present */
+        }
+        /* Webkit/Blink placeholder */
+        .add-task-input::-webkit-input-placeholder,
+        .someday-title::-webkit-input-placeholder {
+            color: var(--secondary-text);
+            opacity: 1;
+        }
+        /* Mozilla placeholder */
+        .add-task-input::-moz-placeholder,
+        .someday-title::-moz-placeholder {
+            color: var(--secondary-text);
+            opacity: 1;
+        }
+        
+        /* Today Header Accent */
+        .today-header { 
+            color: var(--accent-color); 
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 8px !important; 
+        }
+        .day-header {
+            border-bottom-color: var(--border-color);
+        }
+        
+        /* Done Task Styles */
+        .task-card.done { 
+            opacity: 0.6; 
+            background-color: var(--card-bg); 
+        }
+        .task-card.done .task-text { color: var(--secondary-text); text-decoration: line-through; }
+        .checkbox-custom { border-color: var(--secondary-text); }
+        .task-card.done .checkbox-custom { 
+            background-color: var(--accent-color); 
+            border-color: var(--accent-color); 
+        }
+
+        /* --- GENERAL STYLES --- */
+        .task-list { min-height: 150px; padding-bottom: 20px; }
+        .task-card {
+            font-size: 1rem; 
+            padding: 0.6rem 0.8rem; /* Reduced padding slightly for dark mode density */
+            cursor: grab;
+            background-color: var(--card-bg);
+            border-radius: 0.5rem; 
+            transition: box-shadow 0.15s ease-in-out; /* Add transition for smoothness */
+        }
+        
+        /* HOVER FIX: Replace background change with a light border using box-shadow */
+        .task-card:hover {
+            box-shadow: 0 0 0 1px var(--secondary-text); /* 1px light border effect */
+            /* Prevent unwanted background change or opacity change on hover */
+            background-color: var(--card-bg); 
+            opacity: 1;
+        }
+
+        .task-card.dragging {
+            opacity: 0.5;
+            box-shadow: 0 5px 15px rgba(255, 71, 71, 0.3); /* Red shadow on drag */
+        }
+        
+        .someday-list {
+            padding: 1.5rem; 
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Custom Date Spacing Fix */
+        .date-primary {
+            font-weight: 600; 
+            font-size: 1.125rem; 
+            margin-right: 0; /* REMOVED SPACE for tight grouping */
+            padding-right: 2px; /* Small space after day name */
+        }
+        .date-secondary {
+            font-size: 0.875rem; 
+            font-style: italic;
+            color: var(--secondary-text);
+            font-weight: 400;
+        }
+
+        /* Accent for buttons and focus states */
+        .btn-accent {
+            background-color: var(--accent-color);
+            border-radius: 0.5rem; 
+            font-weight: 600;
+        }
+        .btn-accent:hover {
+            opacity: 0.9;
+        }
+        .focus-ring-accent:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 71, 71, 0.4); 
+        }
+        .text-accent {
+            color: var(--accent-color);
+        }
+        .drag-target {
+            border: 4px solid var(--accent-color) !important; /* Solid red border on drag target */
+            border-radius: 0.5rem !important;
+        }
+        .task-card .hover\\:text-accent:hover {
+            color: var(--accent-color); 
+        }
+        
+        /* + Button Alignment Fix */
+        .btn-plus-fix {
+            line-height: 1; /* Ensures the "+" is vertically centered within the flex container */
+            padding-top: 1px; /* Visual adjustment for better centering */
+        }
+    </style>
+</head>
+<body class="p-0">
+
+    <!-- Someday Sidebar (Fixed position - RIGHT) --><div id="someday-sidebar" class="fixed top-0 right-0 h-full w-full md:w-80 transform translate-x-full transition-transform duration-300 ease-in-out p-6 z-50 overflow-y-auto someday-sidebar">
+        <div class="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+            <h2 class="text-xl font-semibold tracking-wide" style="color: var(--accent-color);">Someday Lists</h2>
+            <!-- Close Icon (X) --><button onclick="toggleSomedaySidebar()" class="text-gray-500 hover:text-white focus-ring-accent">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Someday Lists Container --><div id="someday-container" class="space-y-6">
+            <!-- Someday Lists will be injected here by JavaScript --></div>
+
+        <button onclick="addSomedayList()" class="sticky bottom-0 mt-6 py-3 px-4 bg-gray-800 text-white font-medium tracking-wide rounded-lg border border-gray-700 hover:bg-gray-700 transition duration-200 focus-ring-accent text-sm w-full">
+            + Add Someday List
+        </button>
+    </div>
+
+    <!-- Main Content Wrapper --><div id="main-wrapper" class="transition-all duration-300 ease-in-out p-4 md:p-12 max-w-7xl mx-auto">
+        
+        <!-- Application Header --><header class="flex justify-between items-center mb-12 border-b border-gray-800 pb-6">
+            <div class="flex items-center space-x-4">
+                <!-- Title uses accent color and is bold -->
+                <h1 class="text-4xl font-bold tracking-wider" style="color: var(--accent-color);">TrackWeek</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <!-- Someday Toggle Button - Simplified to + and fixed alignment --><button onclick="toggleSomedaySidebar()" class="btn-accent w-10 h-10 text-white rounded-lg hover:opacity-90 transition duration-200 text-2xl flex items-center justify-center focus-ring-accent btn-plus-fix">
+                    +
+                </button>
+            </div>
+        </header>
+
+        <!-- Weekly Grid Container - Horizontally scrolling Flex container --><div id="weekly-grid" class="flex flex-row overflow-x-auto gap-8 mb-10 pb-4">
+            <!-- Columns will be injected here by JavaScript --></div>
+        
+        <!-- Hidden Someday button for mobile (fixed to the right) --><button onclick="toggleSomedaySidebar()" class="btn-accent fixed bottom-4 right-4 md:hidden w-12 h-12 text-white font-bold rounded-full shadow-lg hover:opacity-90 transition duration-200 z-40 focus-ring-accent text-2xl flex items-center justify-center btn-plus-fix">
+            +
+        </button>
+    </div>
+
+    <script>
+        const WEEK_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const WEEKLY_LISTS_COUNT = 7;
+        let TASKS = {}; // Main data store
+        let currentDayKey = new Date().toISOString().slice(0, 10);
+        let nextTaskId = 1;
+        let isSidebarOpen = false; // Sidebar state
+
+        // --- Utility Functions ---
+
+        /**
+         * Calculates the correct suffix (st, nd, rd, th) for a day number.
+         * @param {number} day - The day of the month (1-31).
+         * @returns {string} The suffix.
+         */
+        function getDaySuffix(day) {
+            if (day > 3 && day < 21) return 'th'; 
+            switch (day % 10) {
+                case 1: return 'st';
+                case 2: return 'nd';
+                case 3: return 'rd';
+                default: return 'th';
+            }
+        }
+
+        /**
+         * Formats the date string and returns separate parts for styling: 10th Fri Oct
+         * @param {Date} date 
+         * @returns {object} An object containing the primary (bolded) and secondary (small/italic) parts.
+         */
+        function formatDate(date) {
+            const dayNum = date.getDate();
+            const daySuffix = getDaySuffix(dayNum);
+            
+            // Get short weekday name and short month name
+            const weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
+            const month = date.toLocaleDateString('en-US', { month: 'short' });
+            
+            // Format primary part: 10th Fri
+            const primaryPart = `${dayNum}${daySuffix} ${weekday}`;
+            // Format secondary part: Oct
+            const secondaryPart = month;
+
+            return { primary: primaryPart, secondary: secondaryPart };
+        }
+
+        function getDateKey(offset) {
+            const d = new Date();
+            d.setDate(d.getDate() + offset);
+            return d.toISOString().slice(0, 10);
+        }
+
+        // --- Sidebar Logic (Sliding in from RIGHT) ---
+        
+        function toggleSomedaySidebar() {
+            const sidebar = document.getElementById('someday-sidebar');
+            const mainWrapper = document.getElementById('main-wrapper');
+            
+            isSidebarOpen = !isSidebarOpen;
+
+            if (isSidebarOpen) {
+                // Open sidebar: slide into view from right
+                sidebar.classList.remove('translate-x-full');
+                sidebar.classList.add('translate-x-0');
+                
+                // Adjust main content margin for desktop (w-80 = 20rem)
+                if (window.innerWidth >= 768) { // md breakpoint
+                    mainWrapper.style.marginRight = '18rem'; 
+                }
+            } else {
+                // Close sidebar: slide out to right
+                sidebar.classList.add('translate-x-full');
+                sidebar.classList.remove('translate-x-0');
+
+                // Reset main content margin
+                mainWrapper.style.marginRight = 'auto';
+            }
+        }
+
+        // --- Persistence (LocalStorage) ---
+
+        function loadTasks() {
+            try {
+                const storedTasks = localStorage.getItem('teuxdeux_tasks');
+                if (storedTasks) {
+                    TASKS = JSON.parse(storedTasks);
+                }
+                const storedId = localStorage.getItem('teuxdeux_next_task_id');
+                if (storedId) {
+                    nextTaskId = parseInt(storedId, 10);
+                }
+            } catch (error) {
+                console.error("Error loading tasks:", error);
+                TASKS = {};
+            }
+        }
+
+        function saveTasks() {
+            try {
+                localStorage.setItem('teuxdeux_tasks', JSON.stringify(TASKS));
+                localStorage.setItem('teuxdeux_next_task_id', nextTaskId.toString());
+            } catch (error) {
+                console.error("Error saving tasks:", error);
+            }
+        }
+
+        // --- Core TrackWeek Logic (Rollover) ---
+
+        function handleRollover() {
+            const lastVisitKey = localStorage.getItem('teuxdeux_last_visit_date');
+            const today = new Date();
+            const todayKey = today.toISOString().slice(0, 10);
+
+            if (lastVisitKey && lastVisitKey !== todayKey) {
+                console.log("Rollover in progress...");
+                let tasksToRollover = [];
+
+                const rollToDateKey = getDateKey(0); 
+
+                // Check days starting from yesterday (day -1) backwards
+                for (let i = -WEEKLY_LISTS_COUNT; i < 0; i++) {
+                    const checkKey = getDateKey(i);
+                    
+                    if (TASKS[checkKey] && Array.isArray(TASKS[checkKey])) {
+                        const rolloverCandidates = TASKS[checkKey].filter(task => !task.done);
+                        tasksToRollover.push(...rolloverCandidates);
+                        
+                        // Clear tasks from the past day to prevent duplication, keeping only done tasks
+                        TASKS[checkKey] = TASKS[checkKey].filter(task => task.done);
+                    }
+                }
+                
+                // Add rollover tasks to the current day
+                if (tasksToRollover.length > 0) {
+                    console.log(`Rolled over ${tasksToRollover.length} tasks to today.`);
+                    TASKS[rollToDateKey] = TASKS[rollToDateKey] || [];
+                    
+                    TASKS[rollToDateKey].unshift(...tasksToRollover.map(task => ({
+                        ...task,
+                        rolled: true,
+                        done: false 
+                    })));
+                }
+            }
+            
+            localStorage.setItem('teuxdeux_last_visit_date', todayKey);
+            saveTasks();
+        }
+
+        // --- Rendering Functions ---
+
+        function renderWeeklyLists() {
+            const grid = document.getElementById('weekly-grid');
+            grid.innerHTML = '';
+            
+            // Render 7 columns starting from the current day
+            for (let i = 0; i < WEEKLY_LISTS_COUNT; i++) {
+                const dateKey = getDateKey(i);
+                const dateObj = new Date(dateKey + 'T12:00:00');
+                const isToday = i === 0;
+
+                const column = document.createElement('div');
+                column.id = `list-${dateKey}`;
+                column.className = `day-column rounded-lg p-6 flex flex-col min-w-[300px] flex-shrink-0`;
+                
+                if (i < 0) {
+                     column.classList.add('past-day');
+                }
+
+                const headerClass = isToday ? 'today-header' : '';
+                const dateData = formatDate(dateObj); // Get the structured date parts
+
+                column.innerHTML = `
+                    <h3 class="day-header ${headerClass} text-base mb-3">
+                        <!-- Primary Part: Date and Weekday (Bold and larger) --><span class="date-primary">${dateData.primary}</span><!-- Removed comma and space -->
+                        <!-- Separator and Secondary Part: Month (Smaller and italic) --><span class="date-secondary">${dateData.secondary}</span>
+                    </h3>
+                    <div class="task-list flex-grow space-y-3" data-list-id="${dateKey}"></div>
+                    <!-- Input styling refined for minimalist look --><input type="text" placeholder="+ add a to-do" class="add-task-input mt-4 p-3 border-none focus:ring-1 focus-ring-accent text-sm font-light" data-day-key="${dateKey}">
+                `;
+
+                grid.appendChild(column);
+                renderTasksInList(dateKey);
+            }
+        }
+
+        function renderSomedayLists() {
+            const container = document.getElementById('someday-container');
+            container.innerHTML = '';
+            
+            const somedayKeys = Object.keys(TASKS).filter(key => key.startsWith('someday_')).sort();
+
+            if (somedayKeys.length === 0) {
+                TASKS['someday_1'] = [];
+                TASKS['someday_1'].listTitle = `Someday List 1`; 
+                somedayKeys.push('someday_1');
+                saveTasks();
+            }
+
+            somedayKeys.forEach(key => {
+                const listIndex = key.split('_')[1];
+                const listTitle = TASKS[key].listTitle || `Someday List ${listIndex}`;
+                
+                const column = document.createElement('div');
+                column.id = `list-${key}`;
+                // Uses custom border/bg styling
+                column.className = 'someday-list rounded-lg p-5 flex flex-col min-h-[150px]';
+                
+                column.innerHTML = `
+                    <!-- Input styling refined for minimalism --><input type="text" value="${listTitle}" class="someday-title text-lg font-light tracking-wide mb-3 w-full border-b border-gray-700 focus:outline-none focus:ring-1 focus-ring-accent" data-list-key="${key}" onblur="updateSomedayTitle(this)">
+                    <div class="task-list flex-grow space-y-3" data-list-id="${key}"></div>
+                    <!-- Input styling refined for minimalism --><input type="text" placeholder="+ add a someday item" class="add-task-input mt-3 p-3 border-none focus:ring-1 focus-ring-accent text-sm font-light" data-day-key="${key}">
+                    <!-- Delete button uses subtle colors --><button onclick="removeSomedayList('${key}')" class="text-xs text-accent hover:opacity-80 mt-3 self-start font-light">Remove List</button>
+                `;
+                container.appendChild(column);
+                renderTasksInList(key);
+            });
+        }
+
+        function addSomedayList() {
+            const nextIndex = Object.keys(TASKS).filter(key => key.startsWith('someday_')).length + 1;
+            const newKey = `someday_${nextIndex}`;
+            TASKS[newKey] = [];
+            TASKS[newKey].listTitle = `Someday List ${nextIndex}`;
+            saveTasks();
+            renderSomedayLists();
+            setupDragAndDrop();
+        }
+
+        function removeSomedayList(key) {
+            console.log("Deleting Someday List. A user modal would normally confirm this.");
+            delete TASKS[key];
+            saveTasks();
+            renderSomedayLists();
+        }
+
+        function updateSomedayTitle(inputElement) {
+            const key = inputElement.dataset.listKey;
+            TASKS[key].listTitle = inputElement.value.trim();
+            saveTasks();
+        }
+
+        function renderTasksInList(listId) {
+            const listContainer = document.querySelector(`.task-list[data-list-id="${listId}"]`);
+            if (!listContainer) return;
+            
+            listContainer.innerHTML = '';
+            TASKS[listId] = TASKS[listId] || [];
+            
+            let tasksArray = TASKS[listId];
+            if (tasksArray.tasks && Array.isArray(tasksArray.tasks)) {
+                tasksArray = tasksArray.tasks;
+            }
+
+            if (Array.isArray(TASKS[listId])) {
+                TASKS[listId].forEach(task => {
+                    const taskElement = createTaskElement(task, listId);
+                    listContainer.appendChild(taskElement);
+                });
+            }
+
+            setupDragAndDrop();
+        }
+        
+        // Function to remove a task explicitly via the X button
+        function removeTask(taskId, listId) {
+            TASKS[listId] = TASKS[listId].filter(t => t.id !== taskId);
+            saveTasks();
+            renderTasksInList(listId);
+        }
+
+        function createTaskElement(task, listId) {
+            const card = document.createElement('div');
+            card.id = `task-${task.id}`;
+            card.draggable = true;
+            card.tabIndex = 0;
+            // Removed hover:bg-gray-800 to allow custom CSS hover to take full effect
+            card.className = `task-card flex items-start justify-between rounded-lg ${task.done ? 'done' : ''}`;
+            card.dataset.taskId = task.id;
+            card.dataset.listId = listId;
+
+            // Rolled indicator uses the primary accent color
+            const rolled = task.rolled ? '<span class="text-xs font-bold mr-1" title="Rolled Over from a previous day" style="color: var(--accent-color);">>></span>' : '';
+            
+            card.innerHTML = `
+                <div class="flex items-start flex-grow">
+                    <div class="checkbox-custom mt-[3px]" onclick="toggleTaskDone(${task.id}, '${listId}')"></div>
+                    <span class="task-text flex-grow mr-2 overflow-hidden break-words font-light" onclick="editTaskText(this, ${task.id}, '${listId}')">
+                        ${rolled}${task.text}
+                    </span>
+                </div>
+                <!-- Delete Button (X) - Subtle grey, uses accent on hover --><button onclick="removeTask(${task.id}, '${listId}')" class="text-gray-500 hover:text-accent p-0.5 transition-colors duration-100 flex items-center justify-center focus:outline-none flex-shrink-0" title="Remove Task">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            `;
+            
+            delete task.rolled;
+
+            return card;
+        }
+
+        // --- Interaction Handlers ---
+
+        function toggleTaskDone(taskId, listId) {
+            const task = TASKS[listId].find(t => t.id === taskId);
+            if (task) {
+                task.done = !task.done;
+                saveTasks();
+                const cardElement = document.getElementById(`task-${taskId}`);
+                if (cardElement) {
+                    cardElement.classList.toggle('done', task.done);
+                }
+            }
+        }
+
+        function editTaskText(spanElement, taskId, listId) {
+            const textContent = spanElement.textContent;
+            const currentText = textContent.replace('>>', '').trim();
+            
+            // Input border color updated to subtle gray for the luxury feel
+            spanElement.innerHTML = `<input type="text" value="${currentText}" class="w-full bg-transparent border-b border-gray-700 focus:outline-none focus-ring-accent font-light" onblur="saveTaskText(this, ${taskId}, '${listId}')" onkeydown="if(event.key === 'Enter') this.blur();">`;
+            spanElement.querySelector('input').focus();
+        }
+
+        function saveTaskText(inputElement, taskId, listId) {
+            const newText = inputElement.value.trim();
+            const task = TASKS[listId].find(t => t.id === taskId);
+            
+            if (task && newText) {
+                task.text = newText;
+                saveTasks();
+            } else if (!newText) {
+                 // Remove task if text is empty
+                TASKS[listId] = TASKS[listId].filter(t => t.id !== taskId);
+                saveTasks();
+            }
+            renderTasksInList(listId);
+        }
+
+        function handleTaskInput(e) {
+            if (e.key === 'Enter') {
+                const input = e.target;
+                const listId = input.dataset.dayKey;
+                const text = input.value.trim();
+
+                if (text) {
+                    const newTask = {
+                        id: nextTaskId++,
+                        text: text,
+                        done: false
+                    };
+                    TASKS[listId] = TASKS[listId] || [];
+                    TASKS[listId].push(newTask);
+                    
+                    saveTasks();
+                    renderTasksInList(listId);
+                    input.value = '';
+                }
+            }
+        }
+        
+        // --- Drag and Drop Logic ---
+
+        let draggedCard = null;
+
+        function handleDragStart(e) {
+            draggedCard = e.currentTarget;
+            draggedCard.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', draggedCard.dataset.taskId);
+            e.dataTransfer.setData('application/json', draggedCard.dataset.listId); 
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            const targetList = e.currentTarget.closest('.task-list');
+            if (targetList) {
+                targetList.classList.add('drag-target');
+            }
+        }
+
+        function handleDragLeave(e) {
+            const targetList = e.currentTarget.closest('.task-list');
+            if (targetList) {
+                targetList.classList.remove('drag-target');
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const targetListElement = e.currentTarget.closest('.task-list');
+            if (!draggedCard || !targetListElement) return;
+
+            const sourceListId = draggedCard.dataset.listId;
+            const targetListId = targetListElement.dataset.listId;
+            const taskId = parseInt(draggedCard.dataset.taskId, 10);
+
+            if (sourceListId !== targetListId) {
+                const taskIndex = TASKS[sourceListId].findIndex(t => t.id === taskId);
+                if (taskIndex > -1) {
+                    const task = TASKS[sourceListId].splice(taskIndex, 1)[0];
+                    
+                    TASKS[targetListId] = TASKS[targetListId] || [];
+                    TASKS[targetListId].push(task);
+                    
+                    draggedCard.dataset.listId = targetListId;
+                    
+                    renderTasksInList(sourceListId);
+                    renderTasksInList(targetListId);
+                }
+            }
+
+            // Cleanup
+            draggedCard.classList.remove('dragging');
+            draggedCard = null;
+            targetListElement.classList.remove('drag-target');
+            saveTasks();
+        }
+
+
+        function setupDragAndDrop() {
+            document.querySelectorAll('.task-card').forEach(card => {
+                card.removeEventListener('dragstart', handleDragStart); 
+                card.addEventListener('dragstart', handleDragStart);
+            });
+
+            document.querySelectorAll('.task-list').forEach(list => {
+                list.removeEventListener('dragover', handleDragOver); 
+                list.removeEventListener('dragleave', handleDragLeave);
+                list.removeEventListener('drop', handleDrop);
+                
+                list.addEventListener('dragover', handleDragOver);
+                list.addEventListener('dragleave', handleDragLeave);
+                list.addEventListener('drop', handleDrop);
+            });
+        }
+        
+        // --- Initialization ---
+
+        function init() {
+            loadTasks();
+            handleRollover();
+            renderWeeklyLists();
+            renderSomedayLists();
+
+            // Set up event listeners for task input fields
+            document.querySelectorAll('.add-task-input').forEach(input => {
+                input.removeEventListener('keydown', handleTaskInput);
+                input.addEventListener('keydown', handleTaskInput);
+            });
+            
+            setupDragAndDrop();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
